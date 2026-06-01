@@ -159,17 +159,6 @@ Melhorias propostas:
 
 ---
 
-## 📚 Referências
-
-- Flutter Documentation — https://flutter.dev/docs
-- Flame Engine — https://flame-engine.org/
-- Dart Language — https://dart.dev/guides
-- Tutorial base usado pelos autores: https://www.youtube.com/watch?v=aNWDGLgB6PQ
-
----
-
----
-
 ## 🧩 Documentação dos Componentes
 
 ### `main.dart` — Ponto de entrada
@@ -299,3 +288,12 @@ Game Over
 | Joystick (tela) | Mover a nave |
 | Botão de disparo (tela) | Atirar laser |
 | Setas do teclado | Mover a nave (desktop/web) |
+
+---
+
+## 📚 Referências
+
+- Flutter Documentation — https://flutter.dev/docs
+- Flame Engine — https://flame-engine.org/
+- Dart Language — https://dart.dev/guides
+- Tutorial base usado pelos autores: https://www.youtube.com/watch?v=aNWDGLgB6PQ
