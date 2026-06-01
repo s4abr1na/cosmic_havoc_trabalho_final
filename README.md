@@ -167,3 +167,135 @@ Melhorias propostas:
 - Tutorial base usado pelos autores: https://www.youtube.com/watch?v=aNWDGLgB6PQ
 
 ---
+
+---
+
+## 🧩 Documentação dos Componentes
+
+### `main.dart` — Ponto de entrada
+
+Arquivo responsável por inicializar o app Flutter e registrar o widget do jogo. Aqui é configurado o `GameWidget` do Flame, que exibe o jogo na tela, e também o mapa de overlays, que são as telas extras que aparecem sobre o jogo, como a tela de Game Over.
+
+---
+
+### `my_game.dart` — Classe principal do jogo
+
+É o coração do projeto. Estende `FlameGame` e coordena todos os outros componentes. As principais responsabilidades são:
+
+- **Inicializar o jogo** (`onLoad`, `startGame`): carrega o joystick, o player, o botão de disparo, os spawners de asteroides e pickups, e o placar.
+- **Gerar asteroides e power-ups** (`SpawnComponent.periodRange`): usa um sistema de spawn periódico que cria novos objetos em intervalos aleatórios.
+- **Controlar o placar** (`incrementScore`): atualiza o texto na tela e adiciona um efeito de "pop" visual no número.
+- **Gerenciar o fim de jogo** (`playerDied`): pausa o motor e exibe o overlay de Game Over.
+- **Reiniciar a partida** (`restartGame`): remove asteroides e pickups ativos, zera o placar, recria o player e retoma o motor.
+
+**Mixins usados:**
+- `HasKeyboardHandlerComponents` — permite que componentes reajam ao teclado (útil para testes no desktop/web).
+- `HasCollisionDetection` — ativa o sistema de colisão do Flame para todos os componentes do jogo.
+
+---
+
+### `player.dart` — Nave do jogador
+
+Representa a nave controlada pelo usuário. Estende `SpriteAnimationComponent`, o que significa que exibe uma animação de sprites em loop (dois frames da nave com o propulsor piscando).
+
+**Movimentação:** o player lê o `relativeDelta` do joystick a cada frame e soma com qualquer input de teclado, movendo a nave na direção resultante.
+
+**Tiro:** quando `_isShooting` é verdadeiro, um laser é criado a cada 0.2 segundos. Se o power-up de laser triplo estiver ativo (`_laserPowerupTimer`), três lasers são disparados em leque.
+
+**Colisões tratadas:**
+- Com `Asteroid`: se não tiver escudo, inicia a sequência de destruição (`_handleDestruction`), que anima a nave caindo, cria explosões aleatórias e ao final chama `game.playerDied()`.
+- Com `Pickup`: coleta o item e aplica seu efeito (laser triplo, bomba ou escudo).
+
+**Mixins usados:**
+- `KeyboardHandler` — captura setas do teclado.
+- `CollisionCallbacks` — detecta colisões com outros objetos.
+
+---
+
+### `asteroid.dart` — Asteroide
+
+Inimigo principal do jogo. Cai de cima para baixo com velocidade e rotação aleatórias. Tem um sistema de vida (`_health`) proporcional ao seu tamanho: asteroides maiores levam mais tiros para ser destruídos.
+
+**Comportamentos:**
+- **Ao tomar dano (`takeDamage`)**: perde 1 de vida. Se ainda tiver vida, pisca em branco e sofre um leve recuo para trás (`_applyKnockback`). Se a vida zerar, concede pontos, cria uma explosão e se divide em fragmentos menores (`_splitAsteroid`).
+- **Divisão**: asteroides maiores se quebram em 3 pedaços menores ao serem destruídos. Asteroides pequenos demais não se dividem.
+- **Bordas da tela**: ao sair pela lateral, reaparece do outro lado (efeito wraparound).
+
+---
+
+### `laser.dart` — Projétil
+
+Projétil disparado pelo jogador. Se move em linha reta para cima (ou em ângulo, se disparado como parte do laser triplo). Quando colide com um asteroide, remove a si mesmo e chama `takeDamage()` no asteroide.
+
+---
+
+### `bomb.dart` — Bomba (power-up)
+
+Quando coletada, uma bomba é criada na posição da nave e expande rapidamente até cobrir boa parte da tela. Usa `SequenceEffect` para encadear animações: crescer de tamanho e diminuir a opacidade. Todo asteroide que a hitbox circular tocar durante a expansão recebe dano.
+
+---
+
+### `shield.dart` — Escudo (power-up)
+
+Um componente filho adicionado diretamente ao player. Exibe um sprite circular ao redor da nave e tem sua própria hitbox. Ao colidir com um asteroide, o asteroide leva dano (em vez da nave). Depois de alguns segundos, o escudo começa a desaparecer gradualmente (`OpacityEffect`) e ao sumir de vez remove a si mesmo e limpa a referência em `player.activeShield`.
+
+---
+
+### `pickup.dart` — Item coletável
+
+Representa os power-ups que caem do topo da tela. Existem três tipos definidos pelo enum `PickupType`: `bomb`, `laser` e `shield`. O sprite carregado depende do tipo (`bomb_pickup.png`, etc.). Tem um efeito de pulso (escala levemente maior e menor em loop) para chamar atenção visual.
+
+---
+
+### `explosion.dart` — Efeito de explosão
+
+Componente puramente visual, sem hitbox. Cria dois efeitos ao ser instanciado: um flash circular que desaparece rapidamente e um sistema de partículas (`ParticleSystemComponent`) que se espalham em direções aleatórias. As cores variam de acordo com o tipo (`ExplosionType`): marrom/terra para `dust`, cinza para `smoke` e dourado/laranja para `fire`.
+
+---
+
+### `star.dart` — Estrela de fundo
+
+Componente simples que simula o fundo estrelado se movendo. Cada estrela tem tamanho e velocidade aleatórios — estrelas maiores caem mais rápido, criando um efeito de profundidade (paralaxe simples). Quando saem pela parte de baixo, reaparecem no topo em uma posição horizontal aleatória.
+
+---
+
+### `shoot_button.dart` — Botão de disparo
+
+Botão visual na tela que o jogador toca para atirar. Usa `TapCallbacks` do Flame para distinguir quando o dedo toca (`onTapDown`, inicia o tiro) e quando solta (`onTapUp` / `onTapCancel`, para o tiro). Isso cria o comportamento de tiro contínuo enquanto o botão é mantido pressionado.
+
+---
+
+### `game_over_overlay.dart` — Tela de Game Over
+
+Widget Flutter (não é um componente Flame) exibido sobre o jogo quando o player morre. Usa `AnimatedOpacity` para aparecer e desaparecer suavemente. O botão "PLAY AGAIN" chama `game.restartGame()` e inicia a animação de fade-out da tela, que ao terminar remove o overlay do mapa.
+
+---
+
+## 🔄 Fluxo do Jogo
+
+```
+Início
+  └─> Spawners criam asteroides e power-ups
+        └─> Player colide com asteroide
+              └─> [Sem escudo] → Destruição → Game Over overlay
+              └─> [Com escudo] → Asteroide leva dano, escudo protege
+        └─> Player coleta power-up
+              └─> bomb  → Explode tudo na tela
+              └─> laser → Laser triplo por 10 segundos  
+              └─> shield → Escudo temporário
+        └─> Laser acerta asteroide
+              └─> [Vida > 0] → Flash + recuo + pontos
+              └─> [Vida = 0] → Explosão + fragmentos + pontos
+Game Over
+  └─> "Play Again" → Reinicia tudo
+```
+
+---
+
+## 🎮 Controles
+
+| Controle | Ação |
+|---|---|
+| Joystick (tela) | Mover a nave |
+| Botão de disparo (tela) | Atirar laser |
+| Setas do teclado | Mover a nave (desktop/web) |
